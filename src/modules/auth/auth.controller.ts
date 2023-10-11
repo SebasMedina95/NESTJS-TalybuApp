@@ -7,17 +7,24 @@ import { Controller,
          Delete,
          Res,
          HttpStatus,
-         ParseUUIDPipe} from '@nestjs/common';
+         ParseUUIDPipe,
+         Req,
+         Query} from '@nestjs/common';
+
+import { ApiResponse, ApiTags } from '@nestjs/swagger';
 
 import { AuthService } from './auth.service';
-import { IUserRoles } from './interfaces/user.interface';
+import { IUserRoles, IUserAuth } from './interfaces/user.interface';
 
 import { CreateAuthDto } from './dto/create-auth.dto';
 import { UpdateAuthDto } from './dto/update-auth.dto';
 import { LoginUserDto } from './dto/login-user.dto';
+import { PaginationDto } from '../../global/pagination/dto/pagination.dto';
+
 import { EValidRoles } from './constants/valid-roles';
 import { Auth } from './decorators/auth.decorator';
 
+@ApiTags('Usuarios')
 @Controller('users')
 export class AuthController {
 
@@ -26,6 +33,10 @@ export class AuthController {
 
   @Post('create')
   @Auth( EValidRoles.ADMIN, EValidRoles.DEV )
+  @ApiResponse({status: 201, description: "Usuario creado correctamente", type: Auth})
+  @ApiResponse({status: 400, description: "No se pudo crear el Usuario"})
+  @ApiResponse({status: 401, description: "No tiene permisos para crear un usuario"})
+  @ApiResponse({status: 403, description: "Token invalido"})
   async create(
       @Res() response,
       @Body() createAuthDto: CreateAuthDto) {
@@ -44,6 +55,9 @@ export class AuthController {
 
   }
 
+  @ApiResponse({status: 200, description: "Usuario logeado correctamente", type: Auth})
+  @ApiResponse({status: 400, description: "No se pudo logear el Usuario"})
+  @ApiResponse({status: 403, description: "Token invalido"})
   @Post('login')
   async login(
       @Res() response,
@@ -67,14 +81,17 @@ export class AuthController {
 
   }
 
-  @Patch('admin/roles')
-  @Auth( EValidRoles.ADMIN, EValidRoles.DEV )
-  async updateRoles(
-      @Res() response,
-      @Param('id', ParseUUIDPipe) id: string, 
-      @Body() updateRolesAuthDto: IUserRoles){
+  @Post('check-status')
+  @Auth()
+  @ApiResponse({status: 200, description: "Usuario re logeado correctamente", type: Auth })
+  @ApiResponse({status: 400, description: "No se pudo re logear el Usuario"})
+  @ApiResponse({status: 401, description: "No tiene permisos para re logear un usuario"})
+  @ApiResponse({status: 403, description: "Token invalido"})
+  async checkAuthStatus(
+    @Req() request,
+    @Res() response){
 
-    const result = await this.authService.updateRoles(id, updateRolesAuthDto);
+    const result = await this.authService.checkAuthStatus(request.user);
 
     if(result.operation.code === "OK"){
 
@@ -88,21 +105,83 @@ export class AuthController {
 
   }
 
-  @Get()
-  @Auth( EValidRoles.ADMIN, EValidRoles.DEV, EValidRoles.SUPER_USER )
-  findAll(@Res() response) {
+  @Patch('admin-roles/:id')
+  @Auth( EValidRoles.ADMIN, EValidRoles.DEV )
+  @ApiResponse({status: 200, description: "Roles de Usuario actualizados correctamente", type: Auth})
+  @ApiResponse({status: 400, description: "No se pudo actualizar los roles el Usuario"})
+  @ApiResponse({status: 401, description: "No tiene permisos para actualizar roles de un usuario"})
+  @ApiResponse({status: 403, description: "Token invalido"})
+  async updateRoles(
+      @Req() request,
+      @Res() response,
+      @Param('id', ParseUUIDPipe) id: string, 
+      @Body() updateRolesAuthDto: IUserRoles){
 
-    return this.authService.findAll();
+    const result = await this.authService.updateRoles(id, updateRolesAuthDto, request.user);
+
+    if(result.operation.code === "OK"){
+
+      return response.status(HttpStatus.OK).send(result);
+
+    }else{
+
+      return response.status(HttpStatus.NOT_FOUND).send(result);
+
+    }
 
   }
 
-  @Get(':id')
-  @Auth( EValidRoles.ADMIN, EValidRoles.DEV, EValidRoles.SUPER_USER )
-  findOne(
+  @Get('list')
+  @Auth( EValidRoles.ADMIN, 
+         EValidRoles.DEV, 
+         EValidRoles.SUPER_USER )
+  @ApiResponse({status: 200, description: "Listado de usuarios generado correctamente", type: Auth})
+  @ApiResponse({status: 400, description: "No se pudo generar listado de Usuarios"})
+  @ApiResponse({status: 401, description: "No tiene permisos para generar listado de usuarios"})
+  @ApiResponse({status: 403, description: "Token invalido"})
+  async findAll(
+    @Res() response,
+    @Query() paginationDto: PaginationDto) {
+
+    const result = await this.authService.findAll(paginationDto);
+
+    if (result.operation.code === "OK") {
+
+      return response.status(HttpStatus.OK).send(result);
+
+    } else {
+
+      return response.status(HttpStatus.NOT_FOUND).send(result);
+
+    }
+
+  }
+
+  @Get('get-by-id/:id')
+  @Auth(
+    EValidRoles.ADMIN,
+    EValidRoles.DEV,
+    EValidRoles.SUPER_USER
+  )
+  @ApiResponse({status: 200, description: "Usuario obtenido por ID correctamente", type: Auth})
+  @ApiResponse({status: 400, description: "No se pudo obtener por ID el Usuario"})
+  @ApiResponse({status: 401, description: "No tiene permisos para obtener por ID un usuario"})
+  @ApiResponse({status: 403, description: "Token invalido"})
+  async findOne(
       @Res() response,
       @Param('id', ParseUUIDPipe) id: string) {
 
-    return this.authService.findOne(id);
+    const result = await this.authService.findOne(id);
+
+    if (result.operation.code === "OK") {
+
+      return response.status(HttpStatus.OK).send(result);
+
+    } else {
+
+      return response.status(HttpStatus.NOT_FOUND).send(result);
+
+    }
 
   }
 
@@ -117,13 +196,32 @@ export class AuthController {
 
   }
 
-  @Delete(':id')
-  @Auth( EValidRoles.ADMIN, EValidRoles.DEV )
-  remove(
+  @Patch('delete/:id')
+  @Auth( 
+    EValidRoles.ADMIN, 
+    EValidRoles.DEV, 
+    EValidRoles.SUPER_USER
+  )
+  @ApiResponse({status: 200, description: "Usuario eliminado lógicamente correctamente", type: Auth})
+  @ApiResponse({status: 400, description: "No se pudo eliminar lógicamente el Usuario"})
+  @ApiResponse({status: 401, description: "No tiene permisos para eliminar lógicamente un usuario"})
+  @ApiResponse({status: 403, description: "Token invalido"})
+  async remove(
+      @Req() request,
       @Res() response,
       @Param('id', ParseUUIDPipe) id: string) {
 
-    return this.authService.remove(id);
+    const result = await this.authService.remove(id, request);
+
+    if (result.operation.code === "OK") {
+
+      return response.status(HttpStatus.OK).send(result);
+
+    } else {
+
+      return response.status(HttpStatus.NOT_FOUND).send(result);
+
+    }
 
   }
 }

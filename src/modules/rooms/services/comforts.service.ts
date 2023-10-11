@@ -3,18 +3,18 @@ import { Injectable,
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, 
          DataSource } from 'typeorm';
+import { JwtService } from '@nestjs/jwt';
 
 import { IComfort, IComfortList } from '../interfaces/comforts.interfaces';
+
 import { CreateComfortDto } from '../dto/creates/create-comfort.dto';
 import { UpdateComfortDto } from '../dto/updates/update-comfort.dto';
+import { PaginationDto } from '../../../global/pagination/dto/pagination.dto';
 
 import { Comfort } from '../entities/comfort.entity';
-import { PaginationDto } from '../../../global/pagination/dto/pagination.dto';
 import { ApiResponse } from '../../../utils/ApiResponse';
 import { EResponseCodes } from '../../../constants/ResponseCodesEnum';
 import { MySqlErrorsExceptions } from '../../../helpers/exceptions-sql';
-import { JwtService } from '@nestjs/jwt';
-import { User } from '../../auth/entities/user.entity';
 
 
 @Injectable()

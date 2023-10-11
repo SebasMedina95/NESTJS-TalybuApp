@@ -92,6 +92,8 @@ $ yarn add bcrypt @types/bcrypt
 $ yarn add @nestjs/passport passport
 $ yarn add @nestjs/jwt passport-jwt
 $ yarn add -D @types/passport-jwt
+# Para documentación Swagger
+$ yarn add @nestjs/swagger
 ```
 
 ## Instalación Base de Datos:

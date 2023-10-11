@@ -13,6 +13,7 @@ import { ApiResponse } from '../../../utils/ApiResponse';
 import { EResponseCodes } from '../../../constants/ResponseCodesEnum';
 
 import { IJwtPayload } from '../interfaces/jwt-payload.interface';
+import { IUser } from '../interfaces/user.interface';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -28,7 +29,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         });
     }
 
-    async validate(payload: IJwtPayload): Promise<ApiResponse<User>> {
+    async validate(payload: IJwtPayload): Promise<ApiResponse<IUser>> {
 
         if( !payload ) throw new UnauthorizedException("El token no existe.");
 
@@ -38,8 +39,22 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         if (!user) throw new UnauthorizedException("El token no es válido.");
         if (!user.status) throw new UnauthorizedException("El usuario no está activo.");
 
+        const objForRequest: IUser = {
+
+            id: user.id,
+            document: user.document,
+            typeDocument: user.typeDocument,
+            fullName: user.fullName,
+            phone: user.phone,
+            address: user.address,
+            email: user.email,
+            status: user.status,
+            roles: user.roles,
+
+        }
+
         return new ApiResponse(
-            user,
+            objForRequest,
             EResponseCodes.OK,
             "Generación estratégia, generación de validación."
         );

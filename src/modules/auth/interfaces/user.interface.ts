@@ -9,7 +9,7 @@ export interface IUser {
     phone: string;
     address: string;
     email: string;
-    password: string;
+    password?: string;
     status: boolean;
     roles?: string[];
     createUserAt?: string;
@@ -32,5 +32,15 @@ export interface IUserAuth {
 
     user: IUser;
     token: IJwtPayload | string;
+
+}
+
+export interface IUserList {
+
+    items: IUser[];
+    page: number;
+    perPage: number;
+    totalData: number;
+    totalPages: number;
 
 }

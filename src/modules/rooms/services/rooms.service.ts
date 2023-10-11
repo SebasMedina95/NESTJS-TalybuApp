@@ -33,18 +33,33 @@ export class RoomsService {
 
   ) { }
 
-  async create(createRoomDto: CreateRoomDto, request: Express.Request): Promise<ApiResponse<IRoom>> {
+  async create(createRoomDto: CreateRoomDto, request: Express.Request): Promise<ApiResponse<IRoom | string>> {
 
-    const room = this.roomsRepository.create({ ...createRoomDto });
+    try {
 
-    console.log(request);
-    //await this.roomsRepository.save( room );
+      //* Decodificación JSON para acción
+      const dataUtilLog: any = request;
+      const documentLogin: string = dataUtilLog.data.document;
+      const createDateAt: Date = new Date();
+      
+      const room = this.roomsRepository.create({ 
+        ...createRoomDto,
+        createUserAt: documentLogin,
+        createDateAt: createDateAt
+      });
 
-    return new ApiResponse(
-      room,
-      EResponseCodes.OK,
-      "Habitación Anexada Correctamente a la Temática."
-    );
+      await this.roomsRepository.save( room );
+
+      return new ApiResponse(
+        room,
+        EResponseCodes.OK,
+        "Habitación Anexada Correctamente a la Temática."
+      );
+
+    } catch (error) {
+      
+    }
+
 
   }
 
@@ -147,7 +162,9 @@ export class RoomsService {
     
   }
 
-  async update(id: string, updateRoomDto: UpdateRoomDto): Promise<ApiResponse<IRoom | string>> {
+  async update(id: string, 
+               updateRoomDto: UpdateRoomDto,
+               request: Express.Request): Promise<ApiResponse<IRoom | string>> {
     
     const room = await this.roomsRepository.findOne({
       where : { "id" : id }
@@ -163,9 +180,20 @@ export class RoomsService {
 
     }
 
+    //* Decodificación JSON para acción
+    const dataUtilLog: any = request;
+    const documentLogin: string = dataUtilLog.data.document;
+    const updateDateAt: Date = new Date();
+
     try {
       
-      const resRoom = await this.roomsRepository.preload({ id, ...updateRoomDto });
+      const resRoom = await this.roomsRepository.preload({ 
+        id, 
+        ...updateRoomDto,
+        createUserAt: documentLogin,
+        createDateAt: updateDateAt  
+      });
+      
       await this.roomsRepository.save( resRoom );
 
       if( !resRoom ){

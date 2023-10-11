@@ -1,8 +1,19 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
-import { ConsumptionService } from './consumption.service';
+import { Controller,
+         Get,
+         Post,
+         Body,
+         Patch,
+         Param,
+         Delete } from '@nestjs/common';
+
+import { ApiTags } from '@nestjs/swagger';
+
 import { CreateConsumptionDto } from './dto/create-consumption.dto';
 import { UpdateConsumptionDto } from './dto/update-consumption.dto';
 
+import { ConsumptionService } from './consumption.service';
+
+@ApiTags('Consumos - <Pendiente>')
 @Controller('consumption')
 export class ConsumptionController {
   constructor(private readonly consumptionService: ConsumptionService) {}

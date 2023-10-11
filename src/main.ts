@@ -1,6 +1,9 @@
 import { Logger, 
          ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { DocumentBuilder, 
+         SwaggerModule } from '@nestjs/swagger';
+
 import { AppModule } from './app.module';
 
 async function main() {
@@ -23,6 +26,15 @@ async function main() {
       }
     })
   );
+
+  //? Para documentación Swagger
+  const config = new DocumentBuilder()
+    .setTitle('API Talybu Motel')
+    .setDescription('Documentación de End Points de API RESTFUL Talybu')
+    .setVersion('1.0')
+    .build();
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api', app, document);
 
   //? Configuración del cors
   app.enableCors();

@@ -4,17 +4,20 @@ import { Column,
          JoinColumn, 
          ManyToOne, 
          PrimaryGeneratedColumn } from "typeorm";
+import { ApiProperty } from '@nestjs/swagger';
 
 @Entity({
     name: "HABIT_HABITACIONES"
 })
 export class Room {
 
+    @ApiProperty({ example : "b811a145-7001-4a63-b478-3b81eaedc2e2", description: "Id de la habitación", uniqueItems: true })
     @PrimaryGeneratedColumn('uuid', {
         name: "HABIT_ID"
     })
     public id: string;
 
+    @ApiProperty({ example : "101", description: "Número de la habitación", uniqueItems: true })
     @Column({
         name: "HABIT_NUMERO",
         type: 'int',
@@ -23,6 +26,8 @@ export class Room {
     })
     public number: number;
 
+
+    @ApiProperty({ example : "There are many variations of passages of Lorem Ipsum available, but the majority have suffered alteration in some form.", description: "Descripción de la habitación", uniqueItems: true })
     @Column({
         name: "HABIT_DESCRIPCION",
         type: 'varchar',
@@ -32,6 +37,7 @@ export class Room {
     })
     public description: string;
 
+    @ApiProperty({ example : "Motel.", description: "Tipo de la habitación" })
     @Column({
         name: "HABIT_TIPO",
         type: 'varchar',
@@ -41,6 +47,7 @@ export class Room {
     })
     public type: string;
 
+    @ApiProperty({ example : "true", description: "Estado de la habitación", default: true })
     @Column({
         name: "HABIT_ESTADO",
         type: 'boolean',
@@ -49,6 +56,7 @@ export class Room {
     })
     public status: boolean;
 
+    @ApiProperty({ example : "43567432", description: "Documento de usuario que creó" })
     @Column({
         name: "HABIT_USUARIO_CREACION",
         type: 'varchar',
@@ -57,6 +65,7 @@ export class Room {
     })
     public createUserAt: string;
 
+    @ApiProperty({ example : "2023-10-10", description: "Fecha de usuario que creó" })
     @Column({
         name: "HABIT_FECHA_CREACION",
         type: 'timestamp',

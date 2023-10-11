@@ -1,3 +1,4 @@
+import { ApiProperty } from "@nestjs/swagger";
 import {
     IsBoolean,
     IsDate,
@@ -13,10 +14,12 @@ import {
 
 export class LoginUserDto {
 
+    @ApiProperty({ description: 'Email del usuario', nullable: false, minLength: 1 })
     @IsString()
     @IsEmail()
     public email: string;
 
+    @ApiProperty({ description: 'Password del usuario', nullable: false, minLength: 6 })
     @IsString()
     @MinLength(6)
     @MaxLength(50)

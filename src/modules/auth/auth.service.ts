@@ -15,12 +15,14 @@ import { User } from './entities/user.entity';
 
 import { IUser, 
          IUserAuth, 
+         IUserList, 
          IUserRoles } from './interfaces/user.interface';
 import { IJwtPayload } from './interfaces/jwt-payload.interface';
 
 import { MySqlErrorsExceptions } from '../../helpers/exceptions-sql';
 import { ApiResponse } from '../../utils/ApiResponse';
 import { EResponseCodes } from '../../constants/ResponseCodesEnum';
+import { PaginationDto } from '../../global/pagination/dto/pagination.dto';
 
 @Injectable()
 export class AuthService {
@@ -71,7 +73,7 @@ export class AuthService {
 
   }
 
-  async login(loginUserDto: LoginUserDto): Promise<ApiResponse<IUser | UnauthorizedException | IUserAuth | string | any>> {
+  async login(loginUserDto: LoginUserDto): Promise<ApiResponse<IUser | UnauthorizedException | IUserAuth | string>> {
 
     try {
       
@@ -155,11 +157,107 @@ export class AuthService {
 
   }
 
-  async updateRoles(id: string, updateRolesAuthDto: IUserRoles): Promise<ApiResponse<IUser | string>> {
+  async checkAuthStatus( request: Express.Request ): Promise<ApiResponse<IUser | UnauthorizedException | IUserAuth | string>> {
+
+    try {
+
+      const dataUtilLog: any = request;
+      console.log(dataUtilLog.data);
+
+      const user = await this.userRepository.findOne({
+        where: { id : dataUtilLog.data.id },
+        select: { id: true,
+                  fullName: true,
+                  email: true,
+                  createUserAt: true,
+                  createDateAt: true, 
+                  password: true }
+      });
+
+      const objPayload: IJwtPayload = {
+        id: dataUtilLog.data.id,
+        fullName: dataUtilLog.data.fullName,
+        email: dataUtilLog.data.email,
+        createUserAt: user.createUserAt,
+        createDateAt: user.createDateAt,
+        tokenCreate: new Date()
+      }
+
+      const objResult: IUserAuth = {
+        user,
+        token: await this.getJwtToken(objPayload)
+      }
+
+      return new ApiResponse(
+        objResult,
+        EResponseCodes.OK,
+        "Login exitoso."
+      );
+      
+    } catch (error) {
+      
+      const fail: string = await this.errorsSQL.handleDbExceptions(error);
+
+      return new ApiResponse(
+        fail,
+        EResponseCodes.FAIL,
+        "No se pudo re logear el Usuario."
+      );
+
+    }
+
+  } 
+
+  async updateRoles(id: string, 
+                    updateRolesAuthDto: IUserRoles, 
+                    request: Express.Request): Promise<ApiResponse<IUser | string>> {
     
     try {
       
+      const userRol = await this.userRepository.findOne({
+        where : { "id" : id }
+      });
+  
+      if( !userRol ){
+  
+        return new ApiResponse(
+          null,
+          EResponseCodes.FAIL,
+          "No se encontró Usuario para Actualizar."
+        );
+  
+      }
 
+      //* Decodificación JSON para acción
+      const dataUtilLog: any = request;
+      const documentLogin: string = dataUtilLog.data.document;
+      const updateDateAt: Date = new Date();
+      const { roles } = updateRolesAuthDto;
+
+      const resUser = await this.userRepository.preload({ 
+        id, 
+        roles: roles,
+        updateUserAt: documentLogin,
+        updateDateAt: updateDateAt,
+      });
+
+      await this.userRepository.save( resUser );
+
+      if( !resUser ){
+
+        return new ApiResponse(
+          null,
+          EResponseCodes.FAIL,
+          "Error, no se pudo Actualizar los roles del Usuario."
+        );
+
+      }
+
+      return new ApiResponse(
+        resUser,
+        EResponseCodes.OK,
+        "Roles de Usuario Actualizada Correctamente."
+      );
 
     } catch (error) {
 
@@ -175,20 +273,148 @@ export class AuthService {
     
   }
 
-  findAll() {
-    return `This action returns all auth`;
+  async findAll( paginationDto: PaginationDto ): Promise<ApiResponse<IUserList>> {
+
+    const { limit = 10, offset = 1 } = paginationDto;
+
+    const [items, totalCount] = await this.userRepository.findAndCount({
+      take: limit,
+      skip: limit * (offset - 1),
+      order: {
+        fullName : 'ASC'
+      },
+      select: {
+        id : true,
+        document : true,
+        typeDocument : true,
+        fullName : true,
+        phone : true,
+        address : true,
+        email : true,
+        roles : true,
+        createUserAt : true,
+        createDateAt : true,
+        updateUserAt : true,
+        updateDateAt : true
+      }
+    });
+
+    const totalPages: number = Math.ceil(totalCount / (limit));
+
+    if(!items || items.length <= 0){
+
+      return new ApiResponse(
+        null,
+        EResponseCodes.OK,
+        "Listado de Usuarios Vacía."
+      );
+
+    }
+
+    const result: IUserList = {
+      items,
+      page: offset,
+      perPage: limit,
+      totalData: totalCount,
+      totalPages : totalPages
+    }
+
+    return new ApiResponse(
+      result,
+      EResponseCodes.OK,
+      "Listado de Usuarios."
+    );
+
   }
 
-  findOne(id: string) {
-    return `This action returns a #${id} auth`;
+  async findOne(id: string): Promise<ApiResponse<IUser>> {
+
+    const result = await this.userRepository.findOne({
+      where : { "id" : id },
+      select: {
+        id : true,
+        document : true,
+        typeDocument : true,
+        fullName : true,
+        phone : true,
+        address : true,
+        email : true,
+        roles : true,
+        createUserAt : true,
+        createDateAt : true,
+        updateUserAt : true,
+        updateDateAt : true
+      }
+    })
+
+    if( !result ){
+
+      return new ApiResponse(
+        null,
+        EResponseCodes.FAIL,
+        "No se encontró Usuario."
+      );
+
+    }
+
+    return new ApiResponse(
+      result,
+      EResponseCodes.OK,
+      "Usuario Obtenido."
+    );
+
   }
 
   update(id: string, updateAuthDto: UpdateAuthDto) {
     return `This action updates a #${id} auth`;
   }
 
-  remove(id: string) {
-    return `This action removes a #${id} auth`;
+  async remove(id: string, request: Express.Request): Promise<ApiResponse<IUser>> {
+    
+    const user = await this.userRepository.findOne({
+      where : { "id" : id }
+    });
+
+    if( !user ){
+
+      return new ApiResponse(
+        null,
+        EResponseCodes.FAIL,
+        "No se encontró Usuario para Eliminación(Lógica)."
+      );
+
+    }
+    
+    //* Decodificación JSON para acción
+    const dataUtilLog: any = request;
+    const documentLogin: string = dataUtilLog.document;
+    const updateDateAt: Date = new Date();
+
+    const resUser = await this.userRepository.preload({ 
+      id, 
+      status: false,
+      updateUserAt: documentLogin,
+      updateDateAt: updateDateAt 
+    });
+
+    await this.userRepository.save( resUser );
+
+    if( !resUser ){
+
+      return new ApiResponse(
+        null,
+        EResponseCodes.FAIL,
+        "Error, no se pudo Eliminar(Lógicamente) el Usuario."
+      );
+
+    }
+
+    return new ApiResponse(
+      resUser,
+      EResponseCodes.OK,
+      "Usuario Eliminado(Lógicamente) Correctamente."
+    );
+    
   }
 
   async getJwtToken( payload: IJwtPayload ): Promise<IJwtPayload | string>{
